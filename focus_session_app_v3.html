@@ -1,0 +1,285 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--moss:#2d6e3e;--moss-light:#4a8c5c;--moss-faint:#e8f2ec;--surface:var(--color-background-primary);--surface2:var(--color-background-secondary);--border:var(--color-border-tertiary);--text:var(--color-text-primary);--text2:var(--color-text-secondary)}
+.app{display:flex;gap:0;min-height:560px;border:0.5px solid var(--border);border-radius:var(--border-radius-lg);overflow:hidden;background:var(--surface)}
+.left-panel{width:320px;min-width:320px;border-right:0.5px solid var(--border);display:flex;flex-direction:column;padding:24px 20px}
+.right-panel{flex:1;display:flex;flex-direction:column;padding:24px 20px;background:var(--surface2)}
+.panel-label{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin-bottom:16px}
+.clock-wrap{display:flex;justify-content:center;margin-bottom:20px}
+.duration-row{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.duration-row label{font-size:13px;color:var(--text2);white-space:nowrap}
+.duration-row input[type=range]{flex:1}
+.duration-row span{font-size:13px;font-weight:500;min-width:32px;text-align:right;color:var(--text)}
+.ctrl-btns{display:flex;gap:8px;margin-bottom:20px}
+.btn{flex:1;padding:8px 0;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--surface);font-size:13px;font-weight:500;cursor:pointer;color:var(--text);transition:background .15s}
+.btn:hover{background:var(--surface2)}
+.btn.primary{background:#2d6e3e;color:#fff;border-color:#2d6e3e}
+.btn.primary:hover{background:#245c33}
+.divider{height:0.5px;background:var(--border);margin:4px 0 16px}
+.task-label{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);margin-bottom:6px}
+.task-name{font-size:15px;font-weight:500;color:var(--text);min-height:22px;margin-bottom:16px}
+.task-placeholder{font-size:14px;color:var(--text2);font-style:italic}
+.braindump-input-wrap{margin-top:auto;padding-top:12px;border-top:0.5px solid var(--border)}
+.input-row{display:flex;gap:6px}
+.input-row input{flex:1;padding:7px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--surface);font-size:13px;color:var(--text)}
+.input-row button{padding:7px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--surface);cursor:pointer;font-size:13px;color:var(--text)}
+.input-row button:hover{background:var(--surface2)}
+.todo-list{list-style:none;flex:1;overflow-y:auto}
+.todo-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--border-radius-md);background:var(--surface);border:0.5px solid var(--border);margin-bottom:6px;cursor:grab;font-size:14px;color:var(--text);transition:border-color .15s}
+.todo-item.dragging{opacity:.4}
+.todo-item.drag-over{border-color:#2d6e3e}
+.todo-item input[type=checkbox]{accent-color:#2d6e3e;width:15px;height:15px;flex-shrink:0}
+.todo-item .todo-text{flex:1}
+.todo-item .todo-text.done{text-decoration:line-through;color:var(--text2)}
+.start-btn{font-size:12px;padding:3px 8px;border-radius:20px;border:0.5px solid #2d6e3e;background:var(--moss-faint);color:#2d6e3e;cursor:pointer;white-space:nowrap;margin-left:auto}
+.start-btn:hover{background:#c5dfc9}
+.drag-handle{color:var(--text2);font-size:16px;cursor:grab;flex-shrink:0}
+.del-btn{background:none;border:none;cursor:pointer;color:var(--text2);font-size:16px;padding:0 2px;opacity:.5}
+.del-btn:hover{opacity:1}
+.mini-clock{position:fixed;bottom:24px;right:24px;width:80px;height:80px;background:var(--surface);border-radius:12px;border:2px solid #2d6e3e;box-shadow:0 2px 12px rgba(0,0,0,.18);cursor:pointer;z-index:9999;display:none;align-items:center;justify-content:center;flex-direction:column;padding:6px}
+.mini-clock .mini-label{font-size:10px;color:#2d6e3e;font-weight:500;margin-top:2px}
+.session-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:20px;background:var(--moss-faint);color:#2d6e3e;margin-bottom:12px;font-weight:500}
+.dot{width:6px;height:6px;border-radius:50%;background:#2d6e3e;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+</style>
+
+<h2 class="sr-only">Focus session timer with task management and braindump</h2>
+
+<div class="app" id="app">
+  <div class="left-panel" id="leftPanel">
+    <div class="panel-label">Focus session</div>
+    <div id="sessionBadge" style="display:none" class="session-badge"><span class="dot"></span> Session active</div>
+    <div class="clock-wrap">
+      <canvas id="clock" width="210" height="210" title="Click to minimise" style="cursor:pointer"></canvas>
+    </div>
+    <div class="duration-row">
+      <label>Duration</label>
+      <input type="range" id="durationSlider" min="1" max="60" value="25" step="1">
+      <span id="durationVal">25 min</span>
+    </div>
+    <div class="ctrl-btns">
+      <button class="btn primary" id="startBtn" onclick="handleStart()"><i class="ti ti-player-play" aria-hidden="true"></i> Start</button>
+      <button class="btn" id="pauseBtn" onclick="handlePause()" disabled><i class="ti ti-player-pause" aria-hidden="true"></i> Pause</button>
+      <button class="btn" id="stopBtn" onclick="handleStop()" disabled><i class="ti ti-square" aria-hidden="true"></i> Stop</button>
+    </div>
+    <div class="divider"></div>
+    <div class="task-label">Task in session</div>
+    <div class="task-name" id="taskName"><span class="task-placeholder">No task selected — pick from list →</span></div>
+    <div class="braindump-input-wrap">
+      <div class="input-row">
+        <input type="text" id="dumpInput" placeholder="Brain dump a thought here!" onkeydown="handleDump(event)">
+        <button onclick="addDump()"><i class="ti ti-corner-down-left" aria-hidden="true"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-label">Braindump &amp; to-do list</div>
+    <ul class="todo-list" id="todoList"></ul>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <input type="text" id="addInput" placeholder="Add a task…" style="flex:1;padding:7px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--surface);font-size:13px;color:var(--text)" onkeydown="if(event.key==='Enter')addTask()">
+      <button class="btn" style="flex:none;padding:7px 14px" onclick="addTask()"><i class="ti ti-plus" aria-hidden="true"></i> Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="mini-clock" id="miniClock" title="Click to restore" onclick="restoreFromMini()">
+  <canvas id="miniCanvas" width="48" height="48"></canvas>
+  <div class="mini-label" id="miniLabel">--:--</div>
+</div>
+
+<script>
+let tasks=[],nextId=1;
+let totalSecs=25*60,remainSecs=25*60,running=false,paused=false;
+let timerInterval=null,activeTask=null,minimised=false,dragSrc=null;
+
+const clockCanvas=document.getElementById('clock');
+const ctx=clockCanvas.getContext('2d');
+const miniCanvas=document.getElementById('miniCanvas');
+const mctx=miniCanvas.getContext('2d');
+
+function drawTimeTimer(canvas,context,remain,total){
+  const W=canvas.width,H=canvas.height;
+  const cx=W/2,cy=H/2;
+  const outerR=W/2-4;
+  const innerR=outerR*0.18;
+  const faceR=outerR-2;
+  const isSmall=W<100;
+
+  context.clearRect(0,0,W,H);
+
+  context.beginPath();
+  context.arc(cx,cy,outerR,0,2*Math.PI);
+  context.fillStyle='#3a8a50';
+  context.fill();
+
+  context.beginPath();
+  context.arc(cx,cy,faceR,0,2*Math.PI);
+  context.fillStyle='#ffffff';
+  context.fill();
+
+  const remainMins=remain/60;
+  const handAngle=-Math.PI/2+(remainMins/60)*2*Math.PI;
+
+  if(remainMins>0){
+    context.beginPath();
+    context.moveTo(cx,cy);
+    context.arc(cx,cy,faceR,-Math.PI/2,handAngle,false);
+    context.closePath();
+    context.fillStyle='#2d6e3e';
+    context.fill();
+  }
+
+  for(let m=0;m<60;m++){
+    const angle=-Math.PI/2+(m/60)*2*Math.PI;
+    const isFive=m%5===0;
+    const tickOuter=faceR-1;
+    const tickInner=isFive?faceR-10:faceR-5;
+    const x1=cx+Math.cos(angle)*tickOuter,y1=cy+Math.sin(angle)*tickOuter;
+    const x2=cx+Math.cos(angle)*tickInner,y2=cy+Math.sin(angle)*tickInner;
+    context.beginPath();
+    context.moveTo(x1,y1);context.lineTo(x2,y2);
+    context.strokeStyle=isFive?'#333':'#999';
+    context.lineWidth=isFive?1.5:0.8;
+    context.stroke();
+
+    if(isFive&&!isSmall){
+      const numR=faceR-18;
+      const nx=cx+Math.cos(angle)*numR,ny=cy+Math.sin(angle)*numR;
+      context.font='500 11px sans-serif';
+      context.fillStyle='#222';
+      context.textAlign='center';
+      context.textBaseline='middle';
+      context.fillText(String(m),nx,ny);
+    }
+  }
+
+  const handLen=faceR*0.72;
+  const hx=cx+Math.cos(handAngle)*handLen,hy=cy+Math.sin(handAngle)*handLen;
+  context.beginPath();
+  context.moveTo(cx,cy);context.lineTo(hx,hy);
+  context.strokeStyle='#ffffff';
+  context.lineWidth=isSmall?2:3;
+  context.lineCap='round';
+  context.stroke();
+
+  context.beginPath();
+  context.arc(cx,cy,isSmall?4:8,0,2*Math.PI);
+  context.fillStyle='#4a8c5c';
+  context.fill();
+  context.beginPath();
+  context.arc(cx,cy,isSmall?2:4,0,2*Math.PI);
+  context.fillStyle='#ffffff';
+  context.fill();
+
+  if(!isSmall){
+    const mins=Math.floor(remain/60),secs=remain%60;
+    context.font='500 14px sans-serif';
+    context.fillStyle='#555';
+    context.textAlign='center';
+    context.textBaseline='middle';
+    context.fillText(String(mins).padStart(2,'0')+':'+String(secs).padStart(2,'0'),cx,cy+faceR*0.55);
+  }
+}
+
+function redraw(){
+  drawTimeTimer(clockCanvas,ctx,remainSecs,totalSecs);
+  drawTimeTimer(miniCanvas,mctx,remainSecs,totalSecs);
+  const mins=Math.floor(remainSecs/60),secs=remainSecs%60;
+  document.getElementById('miniLabel').textContent=String(mins).padStart(2,'0')+':'+String(secs).padStart(2,'0');
+}
+redraw();
+
+document.getElementById('durationSlider').addEventListener('input',function(){
+  if(running)return;
+  const v=parseInt(this.value);
+  document.getElementById('durationVal').textContent=v+' min';
+  totalSecs=v*60;remainSecs=totalSecs;redraw();
+});
+
+function handleStart(){
+  if(paused){paused=false;startTick();updateBtns();return;}
+  totalSecs=parseInt(document.getElementById('durationSlider').value)*60;
+  remainSecs=totalSecs;running=true;paused=false;
+  document.getElementById('sessionBadge').style.display='inline-flex';
+  document.getElementById('durationSlider').disabled=true;
+  startTick();updateBtns();
+}
+function handlePause(){
+  if(!running)return;
+  paused=!paused;
+  if(paused)clearInterval(timerInterval);else startTick();
+  document.getElementById('pauseBtn').innerHTML=paused?'<i class="ti ti-player-play" aria-hidden="true"></i> Resume':'<i class="ti ti-player-pause" aria-hidden="true"></i> Pause';
+  updateBtns();
+}
+function handleStop(){
+  clearInterval(timerInterval);running=false;paused=false;
+  document.getElementById('sessionBadge').style.display='none';
+  document.getElementById('durationSlider').disabled=false;
+  totalSecs=parseInt(document.getElementById('durationSlider').value)*60;
+  remainSecs=totalSecs;redraw();updateBtns();
+  document.getElementById('pauseBtn').innerHTML='<i class="ti ti-player-pause" aria-hidden="true"></i> Pause';
+}
+function startTick(){
+  clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{
+    if(remainSecs<=0){clearInterval(timerInterval);running=false;
+      document.getElementById('sessionBadge').style.display='none';
+      document.getElementById('durationSlider').disabled=false;
+      updateBtns();redraw();return;}
+    remainSecs--;redraw();
+  },1000);
+}
+function updateBtns(){
+  document.getElementById('startBtn').disabled=running&&!paused;
+  document.getElementById('pauseBtn').disabled=!running;
+  document.getElementById('stopBtn').disabled=!running;
+}
+
+clockCanvas.addEventListener('click',function(){if(running)toggleMini();});
+function toggleMini(){
+  minimised=!minimised;
+  document.getElementById('miniClock').style.display=minimised?'flex':'none';
+  document.getElementById('leftPanel').style.visibility=minimised?'hidden':'visible';
+}
+function restoreFromMini(){
+  minimised=false;
+  document.getElementById('miniClock').style.display='none';
+  document.getElementById('leftPanel').style.visibility='visible';
+}
+
+function renderList(){
+  const ul=document.getElementById('todoList');
+  ul.innerHTML='';
+  if(tasks.length===0)return;
+  tasks.forEach(t=>{
+    const li=document.createElement('li');
+    li.className='todo-item';li.draggable=true;li.dataset.id=t.id;
+    li.innerHTML=`<span class="drag-handle" aria-hidden="true"><i class="ti ti-grip-vertical"></i></span>
+      <input type="checkbox" ${t.done?'checked':''} onchange="toggleDone(${t.id})">
+      <span class="todo-text ${t.done?'done':''}">${t.text}</span>
+      <button class="start-btn" onclick="selectTask(${t.id})">Focus</button>
+      <button class="del-btn" onclick="delTask(${t.id})" aria-label="Delete"><i class="ti ti-x"></i></button>`;
+    li.addEventListener('dragstart',e=>{dragSrc=t.id;li.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+    li.addEventListener('dragend',()=>li.classList.remove('dragging'));
+    li.addEventListener('dragover',e=>{e.preventDefault();li.classList.add('drag-over');});
+    li.addEventListener('dragleave',()=>li.classList.remove('drag-over'));
+    li.addEventListener('drop',e=>{e.preventDefault();li.classList.remove('drag-over');if(dragSrc===t.id)return;
+      const from=tasks.findIndex(x=>x.id===dragSrc),to=tasks.findIndex(x=>x.id===t.id);
+      const[item]=tasks.splice(from,1);tasks.splice(to,0,item);renderList();});
+    ul.appendChild(li);
+  });
+}
+function addTask(text){
+  const input=document.getElementById('addInput');
+  const val=(text||input.value).trim();if(!val)return;
+  tasks.push({id:nextId++,text:val,done:false});input.value='';renderList();
+}
+function delTask(id){tasks=tasks.filter(t=>t.id!==id);if(activeTask===id){activeTask=null;document.getElementById('taskName').innerHTML='<span class="task-placeholder">No task selected — pick from list →</span>';}renderList();}
+function toggleDone(id){const t=tasks.find(x=>x.id===id);if(t)t.done=!t.done;renderList();}
+function selectTask(id){activeTask=id;const t=tasks.find(x=>x.id===id);if(t)document.getElementById('taskName').textContent=t.text;}
+function handleDump(e){if(e.key==='Enter')addDump();}
+function addDump(){const input=document.getElementById('dumpInput');const val=input.value.trim();if(!val)return;tasks.push({id:nextId++,text:val,done:false});input.value='';renderList();}
+renderList();
+</script>
