@@ -17,4 +17,5 @@ work in process!!! some other features I want to implement
 - haptics or chime when timer ends
 - !! minmised window stays fixed, not covered by other tabs/windows as one toggle between tasks
 - maybe simplify time entry (when deciding solution): instead of drag scroller, maybe by typing?
-
+- tasks disappear when checked off
+- scrollable list, fixed size (prompt box doesnt shift downwards as list gets longer)
